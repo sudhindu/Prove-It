@@ -107,7 +107,27 @@ class InnerProdSpaces(VecSpaces):
         return [VecSpaces.known_inner_prod_space(operand, field=field)
                 for operand in vecs]    
     
-
+    @staticmethod
+    def yield_readily_provable_inner_prod_spaces(vec_or_vecs, *, field=None):
+        if isinstance(vec_or_vecs, Expression):
+            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(vec_or_vecs):
+                space_field = space.field
+                if space_field == K or (hasattr(space_field, ‘readily_includes’) and space_field.readily_includes(K)):
+                    yield space
+                else:
+                    space_intersection = set()
+            for vec in vec_or_vecs:
+                spaces = set()
+                for space in InnerProdSpaces.yield_readily_provable_inner_prod_spaces (vec, field=field)
+                    spaces.add(space)
+            
+                inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
+            inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
+            inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
+            fields=set()
+            # exercise for Sudhindu
+            # yield appropriate spaces
+            # exercise for Sudhindu
 
 class InnerProdSpacesMembership(ClassMembership):
     def __init__(self, element, domain):

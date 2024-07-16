@@ -1,5 +1,5 @@
 from proveit import (Operation, Literal, UnsatisfiedPrerequisites,
-                     equality_prover)
+                     equality_prover,relation_prover)
 from proveit import a, b, x, y, z, H, K
 from proveit.logic import is_irreducible_value
 
@@ -20,6 +20,7 @@ class InnerProd(Operation):
         _a, _b = self.operands
         return (r'\left \langle ' + _a.latex() + ', ' 
                 + _b.latex() + r'\right \rangle')
+    
     
     @equality_prover('shallow_simplified', 'shallow_simplify')
     def shallow_simplification(self, *, must_evaluate=False,
@@ -63,7 +64,53 @@ class InnerProd(Operation):
         if must_evaluate and not is_irreducible_value(simp.rhs):
             return simp.inner_expr().rhs.evaluate()
         return simp
-     
-
-
-
+    
+    @relation_prover
+    def deduce_membership(self, K, **defaults_config,):
+        from . import inner_prod_field_membership,inner_prod_complex_membership
+        from proveit.linear_algebra import InnerProdSpaces, HilbertSpaces
+        from proveit.numbers import Complex
+        _x,_y=self.operands
+        inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
+        inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
+        inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
+        fields=set()
+        for inner_prod_space in inner_prod_spaces:
+            if inner_prod_space.field == K:
+                return True
+            fields.add(inner_prod_space.field)
+        if K==Complex:
+            yield_known_hilbert_spaces = HilbertSpaces.yield_known_hilbert_spaces
+            for _Hspace in yield_known_hilbert_spaces(K):
+                return inner_prod_complex_membership.instantiate({H:_Hspace,x:_x,y:_y}) 
+        else:
+            yield_known_inner_prod_spaces=InnerProdSpaces.yield_known_inner_prod_spaces
+            for _ISpace in yield_known_inner_prod_spaces(K):
+                return inner_prod_field_membership.instantiate({H:_ISpace,x:_x,y:_y})
+        raise UnsatisfiedPrerequisites(
+                "No known Hilbert space containing %s"%self
+        )
+    
+    def readily_provable_membership(self, K):
+        '''
+        Return True iff we can readily prove that this InnerProd
+        evaluates to something in set K.
+        '''
+        from proveit.linear_algebra import InnerProdSpaces
+        _x,_y=self.operands
+        inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
+        inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
+        inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
+        fields=set()
+        for inner_prod_space in inner_prod_spaces:
+            if inner_prod_space.field == K:
+                return True
+            fields.add(inner_prod_space.field)
+        for field in fields:
+            if hasattr(field, 'readily_includes') and field.readily_includes(K):
+                return True
+        return False 
+       
+    @property
+    def field(self):
+        return Complex
