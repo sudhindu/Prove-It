@@ -109,25 +109,32 @@ class InnerProdSpaces(VecSpaces):
     
     @staticmethod
     def yield_readily_provable_inner_prod_spaces(vec_or_vecs, *, field=None):
+        '''
+        For the given list vec_or_vecs of vectors, yield the set of
+        inner product spaces (aka Hilbert spaces) which the vectors
+        have in common.
+        '''
         if isinstance(vec_or_vecs, Expression):
-            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(vec_or_vecs):
+            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(
+                    vec_or_vecs):
                 space_field = space.field
-                if space_field == K or (hasattr(space_field, ‘readily_includes’) and space_field.readily_includes(K)):
+                if (space_field == field or
+                        (hasattr(space_field, 'readily_includes')
+                         and space_field.readily_includes(field))):
                     yield space
-                else:
-                    space_intersection = set()
+        else:
+            # assuming our list of vectors and each related set of
+            # inner prod spaces isn't very large
+            list_of_space_sets = []
             for vec in vec_or_vecs:
                 spaces = set()
-                for space in InnerProdSpaces.yield_readily_provable_inner_prod_spaces (vec, field=field)
+                for space in (InnerProdSpaces.
+                              yield_readily_provable_inner_prod_spaces(
+                              vec, field=field)):
                     spaces.add(space)
-            
-                inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-            inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-            inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-            fields=set()
-            # exercise for Sudhindu
-            # yield appropriate spaces
-            # exercise for Sudhindu
+                list_of_space_sets.add(spaces)
+            space_intersection = set.intersection(*list_of_space_sets)
+            yield space_intersection
 
 class InnerProdSpacesMembership(ClassMembership):
     def __init__(self, element, domain):
