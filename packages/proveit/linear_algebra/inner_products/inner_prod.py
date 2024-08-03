@@ -70,21 +70,28 @@ class InnerProd(Operation):
         from . import inner_prod_field_membership,inner_prod_complex_membership
         from proveit.linear_algebra import InnerProdSpaces, HilbertSpaces
         from proveit.numbers import Complex
-        _x,_y=self.operands
-        inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-        inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-        inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-        fields=set()
+        from proveit.logic import CartExp
+        _x, _y = self.operands
+        # inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
+        # inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
+        # inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
+        # attempted replacement
+        inner_prod_spaces = (
+                InnerProdSpaces.
+                yield_readily_provable_inner_prod_spaces((_x, _y), field=K))
+        fields = set()
         for inner_prod_space in inner_prod_spaces:
+            # if isinstance(inner_prod_space, CartExp):
+            #     print(f'{inner_prod_space} is a CartExp expression!')
             if inner_prod_space.field == K:
-                return True
+                return True # this is weird -- returning a boolean? some left-over garbage here.
             fields.add(inner_prod_space.field)
-        if K==Complex:
+        if K == Complex:
             yield_known_hilbert_spaces = HilbertSpaces.yield_known_hilbert_spaces
             for _Hspace in yield_known_hilbert_spaces(K):
                 return inner_prod_complex_membership.instantiate({H:_Hspace,x:_x,y:_y}) 
         else:
-            yield_known_inner_prod_spaces=InnerProdSpaces.yield_known_inner_prod_spaces
+            yield_known_inner_prod_spaces = InnerProdSpaces.yield_known_inner_prod_spaces
             for _ISpace in yield_known_inner_prod_spaces(K):
                 return inner_prod_field_membership.instantiate({H:_ISpace,x:_x,y:_y})
         raise UnsatisfiedPrerequisites(
@@ -96,13 +103,22 @@ class InnerProd(Operation):
         Return True iff we can readily prove that this InnerProd
         evaluates to something in set K.
         '''
+        # print(f'Entering InnerProd.readily_provable_membership() with self = {self}')
         from proveit.linear_algebra import InnerProdSpaces
-        _x,_y=self.operands
-        inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-        inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-        inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-        fields=set()
+        _x, _y = self.operands
+        # the next 3 lines to be replaced with a call to the static method
+        # InnerProdSpaces.yield_readily_provable_inner_prod_spaces()
+        # inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
+        # inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
+        # inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
+        # attempted replacement
+        inner_prod_spaces = (
+                InnerProdSpaces.
+                yield_readily_provable_inner_prod_spaces((_x, _y), field=K))
+        fields = set()
         for inner_prod_space in inner_prod_spaces:
+            # if isinstance(inner_prod_space, CartExp):
+            #     print(f'{inner_prod_space} is a CartExp expression!')
             if inner_prod_space.field == K:
                 return True
             fields.add(inner_prod_space.field)
