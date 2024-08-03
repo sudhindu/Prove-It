@@ -35,6 +35,7 @@ class InnerProdSpaces(VecSpaces):
         if _operator is None:
             _operator = InnerProdSpaces._operator_
         VecSpaces.__init__(self, field, styles=styles, _operator=_operator)
+        # self.field = field ?? Do we already have a self.field? See further below.
         
     def membership_object(self, element):
         return InnerProdSpacesMembership(element, self)
@@ -65,9 +66,10 @@ class InnerProdSpaces(VecSpaces):
                 yield vec_space
             else:
                 try:
-                    yield deduce_as_inner_prod_space(vec_space)
+                    deduce_as_inner_prod_space(vec_space)
+                    yield vec_space
                 except NotImplementedError:
-                    # Not known you to prove 'vec_space' is an inner
+                    # Not known how to prove 'vec_space' is an inner
                     # product space.
                     pass
 
@@ -111,14 +113,24 @@ class InnerProdSpaces(VecSpaces):
     def yield_readily_provable_inner_prod_spaces(vec_or_vecs, *, field=None):
         '''
         For the given list vec_or_vecs of vectors, yield the set of
-        inner product spaces (aka Hilbert spaces) which the vectors
-        have in common.
+        inner product spaces (i.e. the vector spaces equipped with
+        an inner product) which the vectors have in common.
         '''
+        from proveit import Expression, ExprTuple
         if (isinstance(vec_or_vecs, Expression)
             and not isinstance(vec_or_vecs, ExprTuple)):
             # we have a single vector to consider
-            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(
+            for space in InnerProdSpaces.yield_known_inner_prod_spaces(
                     vec_or_vecs):
+                try:
+                    # unfortunately, the following does NOT guarantee
+                    # that 'space' is an actual VecSpace w/assoc'd field
+                    space = space.deduce_as_vec_space().rhs
+                    # print(f'space = {space}')
+                except Exception:
+                    print(f'Exception')
+                    pass
+                # we are still not guaranteed that space.field exists!
                 space_field = space.field
                 if (space_field == field or
                         (hasattr(space_field, 'readily_includes')
@@ -133,7 +145,7 @@ class InnerProdSpaces(VecSpaces):
                               yield_readily_provable_inner_prod_spaces(
                               vec, field=field)):
                     spaces.add(space)
-                list_of_space_sets.add(spaces)
+                list_of_space_sets.append(spaces)
             space_intersection = set.intersection(*list_of_space_sets)
             yield space_intersection
 
