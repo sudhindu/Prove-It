@@ -66,62 +66,49 @@ class InnerProd(Operation):
         return simp
     
     @relation_prover
-    def deduce_membership(self, K, **defaults_config,):
+    def deduce_membership(self, field, **defaults_config,):
+        '''
+        Deduce and return a judgment that the InnerProd object would
+        evaluate to a member of the field K. For example, for vectors
+        v, w in an inner product space over the field of complex
+        numbers, calling <v, w>.deduce_membership(Complex)
+        should return: |- <v, w> in Complex.
+        '''
         from . import inner_prod_field_membership,inner_prod_complex_membership
-        from proveit.linear_algebra import InnerProdSpaces, HilbertSpaces
+        from proveit.linear_algebra import InnerProdSpaces
         from proveit.numbers import Complex
-        from proveit.logic import CartExp
         _x, _y = self.operands
-        # inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-        # inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-        # inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-        # attempted replacement
-        inner_prod_spaces = (
-                InnerProdSpaces.
-                yield_readily_provable_inner_prod_spaces((_x, _y), field=K))
-        fields = set()
-        for inner_prod_space in inner_prod_spaces:
-            # if isinstance(inner_prod_space, CartExp):
-            #     print(f'{inner_prod_space} is a CartExp expression!')
-            if inner_prod_space.field == K:
-                return True # this is weird -- returning a boolean? some left-over garbage here.
-            fields.add(inner_prod_space.field)
-        if K == Complex:
-            yield_known_hilbert_spaces = HilbertSpaces.yield_known_hilbert_spaces
-            for _Hspace in yield_known_hilbert_spaces(K):
-                return inner_prod_complex_membership.instantiate({H:_Hspace,x:_x,y:_y}) 
-        else:
-            yield_known_inner_prod_spaces = InnerProdSpaces.yield_known_inner_prod_spaces
-            for _ISpace in yield_known_inner_prod_spaces(K):
-                return inner_prod_field_membership.instantiate({H:_ISpace,x:_x,y:_y})
+        yield_spaces = (
+                InnerProdSpaces.yield_readily_provable_inner_prod_spaces)
+        for _inner_prod_space in yield_spaces((_x, _y), field=field):
+            if field == Complex:
+                return (inner_prod_complex_membership.
+                        instantiate({H:_inner_prod_space, x:_x, y:_y}))
+            return (inner_prod_field_membership.
+                    instantiate({H:_inner_prod_space, K:field, x:_x,y:_y}))
         raise UnsatisfiedPrerequisites(
-                "No known Hilbert space containing %s"%self
+                f'No known Hilbert space over field {field} containing {self}.'
         )
     
     def readily_provable_membership(self, K):
         '''
         Return True iff we can readily prove that this InnerProd
-        evaluates to something in set K.
+        evaluates to something in field set K.
         '''
-        # print(f'Entering InnerProd.readily_provable_membership() with self = {self}')
         from proveit.linear_algebra import InnerProdSpaces
         _x, _y = self.operands
-        # the next 3 lines to be replaced with a call to the static method
-        # InnerProdSpaces.yield_readily_provable_inner_prod_spaces()
-        # inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-        # inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-        # inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-        # attempted replacement
         inner_prod_spaces = (
                 InnerProdSpaces.
                 yield_readily_provable_inner_prod_spaces((_x, _y), field=K))
         fields = set()
         for inner_prod_space in inner_prod_spaces:
-            # if isinstance(inner_prod_space, CartExp):
-            #     print(f'{inner_prod_space} is a CartExp expression!')
-            if inner_prod_space.field == K:
+            # The inner_prod_space might appear as a simple set,
+            # such as R^{n} or C^{n}, so we perform some extra work to
+            # guarantee we can access the associated field
+            _space_field = inner_prod_space.deduce_as_vec_space().rhs.field
+            if _space_field == K:
                 return True
-            fields.add(inner_prod_space.field)
+            fields.add(_space_field)
         for field in fields:
             if hasattr(field, 'readily_includes') and field.readily_includes(K):
                 return True
