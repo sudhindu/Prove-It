@@ -35,6 +35,7 @@ class InnerProdSpaces(VecSpaces):
         if _operator is None:
             _operator = InnerProdSpaces._operator_
         VecSpaces.__init__(self, field, styles=styles, _operator=_operator)
+        # self.field = field ?? Do we already have a self.field? See further below.
         
     def membership_object(self, element):
         return InnerProdSpacesMembership(element, self)
@@ -65,9 +66,10 @@ class InnerProdSpaces(VecSpaces):
                 yield vec_space
             else:
                 try:
-                    yield deduce_as_inner_prod_space(vec_space)
+                    deduce_as_inner_prod_space(vec_space)
+                    yield vec_space
                 except NotImplementedError:
-                    # Not known you to prove 'vec_space' is an inner
+                    # Not known how to prove 'vec_space' is an inner
                     # product space.
                     pass
 
@@ -109,25 +111,38 @@ class InnerProdSpaces(VecSpaces):
     
     @staticmethod
     def yield_readily_provable_inner_prod_spaces(vec_or_vecs, *, field=None):
-        if isinstance(vec_or_vecs, Expression):
-            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(vec_or_vecs):
-                space_field = space.field
-                if space_field == K or (hasattr(space_field, ‘readily_includes’) and space_field.readily_includes(K)):
+        '''
+        For the given list vec_or_vecs of vectors, yield the set of
+        known or readily provable inner product spaces (i.e. the vector
+        spaces equipped with an inner product) which the vectors have
+        in common.
+        '''
+        from proveit import Expression, ExprTuple
+        if (isinstance(vec_or_vecs, Expression)
+            and not isinstance(vec_or_vecs, ExprTuple)):
+            # we have a single vector to consider
+            for space in InnerProdSpaces.yield_known_inner_prod_spaces(
+                    vec_or_vecs, field=field):
+                space_field = space.deduce_as_vec_space().rhs.field
+                if (space_field == field or
+                        (hasattr(space_field, 'readily_includes')
+                         and space_field.readily_includes(field))):
                     yield space
-                else:
-                    space_intersection = set()
+        else:
+            # we have a list of vectors
+            list_of_space_sets = []
             for vec in vec_or_vecs:
                 spaces = set()
-                for space in InnerProdSpaces.yield_readily_provable_inner_prod_spaces (vec, field=field)
+                for space in (InnerProdSpaces.
+                              yield_readily_provable_inner_prod_spaces(
+                              vec, field=field)):
                     spaces.add(space)
-            
-                inner_prod_spaces1 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_x))
-            inner_prod_spaces2 = set(InnerProdSpaces.yield_known_inner_prod_spaces(_y))
-            inner_prod_spaces = inner_prod_spaces1.intersection(inner_prod_spaces2)
-            fields=set()
-            # exercise for Sudhindu
-            # yield appropriate spaces
-            # exercise for Sudhindu
+                list_of_space_sets.append(spaces)
+
+            # e.g. list_of_space_sets = [{C^3}, {C^3, R^3}, {C^3}]
+            space_intersection = set.intersection(*list_of_space_sets)
+            for space in space_intersection:
+                yield space
 
 class InnerProdSpacesMembership(ClassMembership):
     def __init__(self, element, domain):
