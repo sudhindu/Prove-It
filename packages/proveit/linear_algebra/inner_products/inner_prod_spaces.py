@@ -114,7 +114,7 @@ class InnerProdSpaces(VecSpaces):
         inner product spaces (aka Hilbert spaces) which the vectors
         have in common.
         '''
-        if isinstance(vec_or_vecs, Expression):
+        if isinstance(vec_or_vecs, Expression) and not isinstance(vec_or_vecs, ExprTuple):
             for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(
                     vec_or_vecs):
                 space_field = space.field
