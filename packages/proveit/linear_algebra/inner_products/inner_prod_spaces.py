@@ -13,32 +13,33 @@ class InnerProdSpaces(VecSpaces):
 
     The InnerProdSpaces definition will enforce the operand to be a
     field in order to contain any members (or even define membership).
-    This will allow us to use InnerProdSpaces without an explicit 
+    This will allow us to use InnerProdSpaces without an explicit
     constraint on its 'field' operand.
-    
-    Expression types that may represent inner product spaces may 
+
+    Expression types that may represent inner product spaces may
     implement a 'deduce_as_inner_prod_space' method to prove its
-    membership in the appropriate class of inner product spaces over a 
+    membership in the appropriate class of inner product spaces over a
     provided 'field'.
-    
-    Expression types that represent a vector in any vector space may 
+
+    Expression types that represent a vector in any vector space may
     implement a 'deduce_in_vec_space' method to prove its membership in
     that space (which may happen to be an inner product space).
     '''
-    
+
     _operator_ = Literal(
-            string_format=r'InnerProdSpaces', 
+            string_format=r'InnerProdSpaces',
             latex_format=r'\textrm{InnerProdSpaces}',
             theory=__file__)
-    
+
     def __init__(self, field, *, styles=None, _operator=None):
         if _operator is None:
             _operator = InnerProdSpaces._operator_
         VecSpaces.__init__(self, field, styles=styles, _operator=_operator)
-        
+        # self.field = field ?? Do we already have a self.field? See further below.
+
     def membership_object(self, element):
         return InnerProdSpacesMembership(element, self)
-    
+
     @property
     def is_proper_class(self):
         '''
@@ -65,9 +66,10 @@ class InnerProdSpaces(VecSpaces):
                 yield vec_space
             else:
                 try:
-                    yield deduce_as_inner_prod_space(vec_space)
+                    deduce_as_inner_prod_space(vec_space)
+                    yield vec_space
                 except NotImplementedError:
-                    # Not known you to prove 'vec_space' is an inner
+                    # Not known how to prove 'vec_space' is an inner
                     # product space.
                     pass
 
@@ -90,7 +92,7 @@ class InnerProdSpaces(VecSpaces):
                 # Make sure we can prove vec_space is an inner product
                 # space.
                 deduce_as_inner_prod_space(vec_space)
-                return vec_space                
+                return vec_space
             except NotImplementedError:
                 over_field_msg = "" if field is None else " over %s"%field
                 raise UnsatisfiedPrerequisites(
@@ -105,26 +107,29 @@ class InnerProdSpaces(VecSpaces):
         '''
         # TODO: appropriately handle an ExprRange opernd.
         return [VecSpaces.known_inner_prod_space(operand, field=field)
-                for operand in vecs]    
-    
+                for operand in vecs]
+
     @staticmethod
     def yield_readily_provable_inner_prod_spaces(vec_or_vecs, *, field=None):
         '''
         For the given list vec_or_vecs of vectors, yield the set of
-        inner product spaces (aka Hilbert spaces) which the vectors
-        have in common.
+        known or readily provable inner product spaces (i.e. the vector
+        spaces equipped with an inner product) which the vectors have
+        in common.
         '''
-        if isinstance(vec_or_vecs, Expression) and not isinstance(vec_or_vecs, ExprTuple):
-            for space in InnerProdSpaces._yield_known_inner_prod_spaces_of_vec(
-                    vec_or_vecs):
-                space_field = space.field
+        from proveit import Expression, ExprTuple
+        if (isinstance(vec_or_vecs, Expression)
+            and not isinstance(vec_or_vecs, ExprTuple)):
+            # we have a single vector to consider
+            for space in InnerProdSpaces.yield_known_inner_prod_spaces(
+                    vec_or_vecs, field=field):
+                space_field = space.deduce_as_vec_space().rhs.field
                 if (space_field == field or
                         (hasattr(space_field, 'readily_includes')
                          and space_field.readily_includes(field))):
                     yield space
         else:
-            # assuming our list of vectors and each related set of
-            # inner prod spaces isn't very large
+            # we have a list of vectors
             list_of_space_sets = []
             for vec in vec_or_vecs:
                 spaces = set()
@@ -132,9 +137,12 @@ class InnerProdSpaces(VecSpaces):
                               yield_readily_provable_inner_prod_spaces(
                               vec, field=field)):
                     spaces.add(space)
-                list_of_space_sets.add(spaces)
+                list_of_space_sets.append(spaces)
+
+            # e.g. list_of_space_sets = [{C^3}, {C^3, R^3}, {C^3}]
             space_intersection = set.intersection(*list_of_space_sets)
-            yield space_intersection
+            for space in space_intersection:
+                yield space
 
 class InnerProdSpacesMembership(ClassMembership):
     def __init__(self, element, domain):
@@ -143,14 +151,14 @@ class InnerProdSpacesMembership(ClassMembership):
             raise TypeError("domain expected to be InnerProdSpaces, not %s"
                             %domain.__class__)
         self.field = domain.field
-    
+
     def side_effects(self, judgment):
         '''
         Prove VecSpaces membership as a side-effect and
         remember known InnerProdSpaces memberships.
         '''
         yield self.derive_vec_spaces_membership
-    
+
     @prover
     def derive_vec_spaces_membership(self, **defaults_config):
         '''
@@ -160,7 +168,7 @@ class InnerProdSpacesMembership(ClassMembership):
         from . import inner_prod_space_is_vec_space
         return inner_prod_space_is_vec_space.instantiate(
                 {K:self.field, H:self.element})
-        
+
     def conclude(self):
         '''
         Attempt to conclude this membership in a class of inner product
@@ -188,8 +196,8 @@ def deduce_as_inner_prod_space(expr, *, field=None,
         '''
         from proveit.numbers import Rational, Real, Complex
         from . import (
-                rational_vec_set_is_inner_prod_space, 
-                real_vec_set_is_inner_prod_space, 
+                rational_vec_set_is_inner_prod_space,
+                real_vec_set_is_inner_prod_space,
                 complex_vec_set_is_inner_prod_space)
         if expr.base == Rational:
             return rational_vec_set_is_inner_prod_space.instantiate(
@@ -214,7 +222,7 @@ def deduce_as_inner_prod_space(expr, *, field=None,
                                 "in inner product spaces over %s, not over "
                                 "the requested %s field"
                                 %(membership.domain.field, field))
-                
+
             return membership
     raise NotImplementedError(
             "'deduce_as_inner_prod_space' is only implemented when "

@@ -15,7 +15,8 @@ class Unitary(Function):
 
     def __init__(self, n, *, styles=None):
         '''
-        Create some U(n), the unitary group of degree n.
+        Create some U(n), the unitary group of degree n, consisting
+        of (the group of) all n x n unitary matrices.
         '''
         Function.__init__(self, Unitary._operator_, n, styles=styles)
         # self.operand = n
@@ -49,7 +50,9 @@ class SpecialUnitary(Function):
 
     def __init__(self, n, *, styles=None):
         '''
-        Create some SU(n), the special unitary group of degree n.
+        Create some SU(n), the special unitary group of degree n,
+        consisting of (the group of) all n x n unitary matrices with
+        determinant 1.
         '''
         Function.__init__(self, SpecialUnitary._operator_, n, styles=styles)
         # self.operand = n
